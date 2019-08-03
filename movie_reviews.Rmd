@@ -1,0 +1,275 @@
+---
+title: "Movie Reviews"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+https://grouplens.org/datasets/movielens/  
+
+Download the ml-latest-small.zip file from "recommended for education and development" under MovieLens Latest Datasets
+
+# Keyboard shortcuts
+
+- Cmd + enter: Run the line of code the cursor is in or the highlighted code
+- Cmd + shift + c: Comment out selected code
+- Cmd + shift + n: Create new file
+
+# Load libraries
+```{r}
+library(dplyr) # data wrangling
+library(tidyr) # data wrangling
+library(ggplot2) # plotting
+library(lme4) # mixed models
+library(formattable) # pretty tables
+```
+
+# Read in data
+```{r}
+wkdir = "~/Documents/projects/ds_bookclub/R_tutorials/movie_reviews/ml-latest-small/"
+
+links = read.csv(paste(wkdir, "links.csv", sep=""))
+movies = read.csv(paste(wkdir, "movies.csv", sep=""))
+ratings = read.csv(paste(wkdir, "ratings.csv", sep=""))
+tags = read.csv(paste(wkdir, "tags.csv", sep=""))
+```
+
+# Preview data
+```{r}
+links %>% head() %>% formattable(align="l")
+movies %>% head() %>% formattable(align="l")
+ratings %>% head() %>% formattable(align="l")
+tags %>% head() %>% formattable(align="l")
+```
+
+# Number of rows
+```{r}
+data.frame(dataset = c("links", "movies", "ratings", "tags"),
+           n = c(links %>% nrow(),
+                 movies %>% nrow(), 
+                 ratings %>% nrow(),
+                 tags %>% nrow())) %>% 
+  formattable(align="l")
+```
+
+# Merge data
+```{r}
+all_data = links %>% 
+  merge(movies) %>% 
+  merge(ratings) %>% 
+  select(-timestamp)
+```
+
+# How many ratings per user? Looks like 1 per user
+```{r}
+all_data %>% 
+  group_by(userId, movieId) %>% 
+  count() %>% 
+  group_by(n) %>% 
+  count() %>%
+  formattable(align = "l")
+```
+
+# An easier way to check... still 1 per user
+```{r}
+all_data %>% nrow()
+all_data %>% select(userId, movieId) %>% unique() %>% nrow()
+```
+
+# Create a column per genre
+```{r}
+all_data2 = all_data %>% 
+  mutate(Action = ifelse(grepl("Action", genres), 1, 0),
+         Adventure = ifelse(grepl("Adventure", genres), 1, 0),
+         Animation = ifelse(grepl("Animation", genres), 1, 0),
+         Children = ifelse(grepl("Children", genres), 1, 0),
+         Crime = ifelse(grepl("Crime", genres), 1, 0),
+         Comedy = ifelse(grepl("Comedy", genres), 1, 0),
+         Documentary = ifelse(grepl("Documentary", genres), 1, 0),
+         Drama = ifelse(grepl("Drama", genres), 1, 0),
+         Fantasy = ifelse(grepl("Fantasy", genres), 1, 0),
+         Film_Noir = ifelse(grepl("Film-Noir", genres), 1, 0),
+         Horror = ifelse(grepl("Horror", genres), 1, 0),
+         IMAX = ifelse(grepl("IMAX", genres), 1, 0),
+         Musical = ifelse(grepl("Musical", genres), 1, 0),
+         Musical_Documentary = ifelse(grepl("Musical Documentary", genres), 1, 0),
+         Mystery = ifelse(grepl("Mystery", genres), 1, 0),
+         Romance = ifelse(grepl("Romance", genres), 1, 0),
+         Sci_Fi = ifelse(grepl("Sci-Fi", genres), 1, 0),
+         Thriller = ifelse(grepl("Thriller", genres), 1, 0),
+         War = ifelse(grepl("War", genres), 1, 0),
+         Western = ifelse(grepl("Western", genres), 1, 0),
+         none = ifelse(grepl("(no genres listed)", genres), 1, 0))
+
+# Count number of categories per movie
+all_data2$total_categorized = rowSums(all_data2[,c(8:length(names(all_data2)))])
+```
+
+# Check to see if we got all the genres
+
+- Test out removing some of the above columns and see what shows up below
+```{r}
+all_data2 %>% filter(total_categorized == 0) %>% .$genres %>% unique() %>% head() %>% formattable(align="l")
+```
+
+# Check distribution of ratings, max and min
+
+- Use this to guide transformation of scale to 0-100
+```{r}
+quantile(all_data2$rating)
+min(all_data2$rating)
+max(all_data2$rating)
+```
+
+# More data cleaning
+
+- Transform data from wide to long and remove missing rows
+- Transform rating from 0-5 scale to 0-100
+- Extract year from title
+
+```{r}
+all_data3 = all_data2 %>% 
+  gather(genre, type, Action:none) %>% 
+  filter(type == 1) %>% 
+  mutate(rating2 = rating*20) %>% 
+  mutate(year = case_when(grepl("2006–2007", title) ~ "2006",
+                          grepl("\\(", title) ~ gsub(".*\\(|\\)|[a-z]|[A-Z]| |:", "", title)),
+         year = as.integer(year)) %>% 
+  select(-genres, -type)
+```
+
+# Preview most number of movies per genre per year
+```{r}
+all_data3 %>% group_by(year, genre) %>% count() %>% arrange(desc(n)) %>% head() %>% formattable(align="l")
+```
+
+# Average rating by genre
+```{r}
+avg_ratings = all_data3 %>% 
+  group_by(genre) %>% 
+  summarise(n = n(),
+            avg_rating2 = mean(rating2),
+            sd_rating2 = sd(rating2),
+            se_rating2 = sd_rating2 / sqrt(n))
+```
+
+# Plot average rating and error bars per genre
+
+- Click Zoom to adjust view of the plot
+```{r, fig.height=7, fig.width=12}
+ggplot(data = avg_ratings,
+       aes(x = genre,
+           y = avg_rating2,
+           ymin = avg_rating2 - se_rating2,
+           ymax = avg_rating2 + se_rating2,
+           fill = genre)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(width=.2) +
+  geom_text(aes(label = round(avg_rating2, 1),
+                y = avg_rating2 - 5)) +
+  geom_text(aes(label = n,
+                y = 2)) +
+  ylab("Average rating") +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+# Does the rating increase as the number of categories assigned to the movie increase?
+```{r}
+model = lm(rating2 ~ total_categorized, data = all_data3)
+summary(model)
+```
+
+# Does the rating increase as the number of categories assigned to the movie increase?
+
+- Mean-centered to standardize coefficients
+```{r}
+scaled_model = lm(scale(rating2) ~ scale(total_categorized), data = all_data3)
+summary(scaled_model)
+```
+
+# Scatterplot of number categorized by rating
+```{r}
+ggplot(data = all_data3,
+       aes(x = total_categorized,
+           y = rating2)) +
+  geom_point() +
+  theme_bw()
+```
+
+# Does the rating increase as the number of categories assigned to the movie increase? 
+
+- Mean-centered to standardize coefficients
+- Remove outliers
+```{r}
+scaled_model2 = lm(scale(rating2) ~ scale(total_categorized), data = all_data3 %>% filter(total_categorized <= 7))
+summary(scaled_model2)
+```
+
+# Scatterplot of number categorized by rating removing outliers
+```{r, fig.height=7, fig.width=12}
+ggplot(data = all_data3 %>% filter(total_categorized <= 7),
+       aes(x = total_categorized,
+           y = rating2)) +
+  geom_jitter(aes(colour = genre)) +
+  theme_bw()
+```
+
+# Average rating per year and genre
+```{r}
+avg_rating_year = all_data3 %>% 
+  group_by(year, genre) %>% 
+  summarise(n = n(),
+            avg_rating2 = mean(rating2),
+            sd_rating2 = sd(rating2),
+            se_rating2 = sd_rating2 / sqrt(n))
+```
+
+# Number of movies per genre per year
+```{r, fig.height=7, fig.width=12}
+ggplot(data = avg_rating_year,
+       aes(x = year,
+           y = n,
+           group = genre,
+           colour = genre)) +
+  geom_line() +
+  theme_bw()
+```
+
+# Do rating trends change across time?
+```{r}
+year_model = lm(rating2 ~ year, data = all_data3)
+summary(year_model)
+```
+
+# Do rating trends change across time?
+
+- Mean-centered to standardize coefficients
+```{r}
+scaled_year_model = lm(scale(rating2) ~ scale(year), data = all_data3)
+summary(scaled_year_model)
+```
+
+# Do rating trends change across time?
+
+- Mean-centered to standardize coefficients
+- Controlling for genre as a random factor
+- More info here on [mixed models](http://www.bodowinter.com/tutorial/bw_LME_tutorial2.pdf)
+```{r}
+mm_scaled_year_model = lmer(scale(rating2) ~ scale(year) + (1 | genre), data = all_data3)
+summary(mm_scaled_year_model)
+```
+
+# Plot rating by year by genre
+```{r, fig.height=7, fig.width=12}
+ggplot(data = all_data3,
+       aes(x = year,
+           y = rating2,
+           colour = title)) +
+  geom_jitter() +
+  facet_wrap(~genre) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
