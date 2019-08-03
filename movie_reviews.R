@@ -85,9 +85,9 @@ all_data2 %>% filter(total_categorized == 0) %>% .$genres %>% unique() %>% head(
 
 # Check distribution of ratings, max and min
 # Use this to guide transformation of scale to 0-100
-quantile(all_data3$rating)
-min(all_data3$rating)
-max(all_data3$rating)
+quantile(all_data2$rating)
+min(all_data2$rating)
+max(all_data2$rating)
 
 # More data cleaning
 # Transform data from wide to long and remove missing rows
