@@ -1,9 +1,13 @@
-# https://grouplens.org/datasets/movielens/
+# Download the ml-latest-small.zip file from "recommended for education and development" under MovieLens Latest Datasets (https://grouplens.org/datasets/movielens/)
+# Tidyverse style guide (https://style.tidyverse.org/)
+# How to use dplyr (https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html)
+# How to do mixed modeling (http://www.bodowinter.com/tutorial/bw_LME_tutorial2.pdf)
 
 # Keyboard shortcuts
 # Cmd + enter: Run the line of code the cursor is in or the highlighted code
 # Cmd + shift + c: Comment out selected code
 # Cmd + shift + n: Create new file
+# Cmd + shift + m: Create a dplyr pipe
 
 # Load libraries
 library(dplyr) # data wrangling

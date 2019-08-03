@@ -7,15 +7,21 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-https://grouplens.org/datasets/movielens/  
+ 
+Download the ml-latest-small.zip file from "recommended for education and development" under MovieLens Latest Datasets (https://grouplens.org/datasets/movielens/)
 
-Download the ml-latest-small.zip file from "recommended for education and development" under MovieLens Latest Datasets
+Tidyverse style guide (https://style.tidyverse.org/)
+
+How to use dplyr (https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html)
+
+How to do mixed modeling (http://www.bodowinter.com/tutorial/bw_LME_tutorial2.pdf)
 
 # Keyboard shortcuts
 
 - Cmd + enter: Run the line of code the cursor is in or the highlighted code
 - Cmd + shift + c: Comment out selected code
 - Cmd + shift + n: Create new file
+- Cmd + shift + m: Create a dplyr pipe
 
 # Load libraries
 ```{r}
@@ -256,7 +262,6 @@ summary(scaled_year_model)
 
 - Mean-centered to standardize coefficients
 - Controlling for genre as a random factor
-- More info here on [mixed models](http://www.bodowinter.com/tutorial/bw_LME_tutorial2.pdf)
 ```{r}
 mm_scaled_year_model = lmer(scale(rating2) ~ scale(year) + (1 | genre), data = all_data3)
 summary(mm_scaled_year_model)
